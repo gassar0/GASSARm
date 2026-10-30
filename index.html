@@ -6,67 +6,38 @@
     <title>حرب المدفعية - المدفع المتطور</title>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
-        body {
-            margin: 0; padding: 0;
-            background: #1a2332;
-            color: #fff;
-            font-family: Tahoma, sans-serif;
-            overflow: hidden;
-            touch-action: none;
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background: #0f2027; overflow: hidden; touch-action: none;
         }
         #gameCanvas {
-            display: block;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364);
-            width: 100vw;
-            height: 100vh;
+            display: block;
         }
         #ui {
-            position: absolute;
-            top: 15px; left: 15px; right: 15px;
-            display: flex;
-            justify-content: space-between;
-            font-size: 16px;
-            font-weight: bold;
-            z-index: 10;
-            pointer-events: none;
+            position: absolute; top: 15px; left: 15px; right: 15px;
+            display: flex; justify-content: space-between; font-size: 16px;
+            font-weight: bold; color: #fff; z-index: 10; pointer-events: none;
         }
-        .stat-box {
-            background: rgba(0, 0, 0, 0.7);
-            padding: 8px 12px;
-            border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
+        .stat-box { background: rgba(0, 0, 0, 0.7); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.3); }
         #controls {
-            position: absolute;
-            bottom: 25px; left: 0; width: 100%;
-            display: flex;
-            justify-content: space-around;
-            padding: 0 15px;
-            z-index: 10;
+            position: absolute; bottom: 25px; left: 0; width: 100%;
+            display: flex; justify-content: space-around; padding: 0 15px; z-index: 10;
         }
         .btn {
-            background: rgba(255, 255, 255, 0.2);
-            border: 2px solid rgba(255, 255, 255, 0.5);
-            color: white;
-            padding: 18px 30px;
-            font-size: 20px;
-            border-radius: 40px;
+            background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.5);
+            color: white; padding: 18px 30px; font-size: 20px; border-radius: 40px;
         }
         #fireBtn { background: rgba(231, 76, 60, 0.8); border-color: #e74c3c; }
         #gameOverScreen {
-            display: none;
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 20;
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9); flex-direction: column; justify-content: center;
+            align-items: center; z-index: 20; color: #fff;
         }
         #restartBtn {
-            background: #2ecc71; border: none; color: white;
-            padding: 12px 25px; font-size: 18px; border-radius: 20px;
-            margin-top: 15px;
+            background: #2ecc71; border: none; color: white; padding: 12px 25px;
+            font-size: 18px; border-radius: 20px; margin-top: 15px; cursor: pointer;
         }
     </style>
 </head>
@@ -93,136 +64,58 @@
     </div>
 
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+        window.onload = function() {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
 
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
 
-        let score = 0, wave = 1, gameOver = false;
+            let score = 0, wave = 1, gameOver = false;
 
-        const cannon = {
-            x: canvas.width / 2 - 25,
-            y: canvas.height - 140,
-            width: 50, height: 40,
-            speed: 8, level: 1, fireRate: 250, lastShot: 0
-        };
+            const cannon = {
+                x: canvas.width / 2 - 25,
+                y: canvas.height - 140,
+                width: 50, height: 40,
+                speed: 8, level: 1, fireRate: 250, lastShot: 0
+            };
 
-        let bullets = [], enemies = [], lastEnemySpawn = 0;
-        let moveLeft = false, moveRight = false, isFiring = false;
+            let bullets = [], enemies = [], lastEnemySpawn = 0;
+            let moveLeft = false, moveRight = false, isFiring = false;
 
-        const leftBtn = document.getElementById('leftBtn');
-        const rightBtn = document.getElementById('rightBtn');
-        const fireBtn = document.getElementById('fireBtn');
+            const leftBtn = document.getElementById('leftBtn');
+            const rightBtn = document.getElementById('rightBtn');
+            const fireBtn = document.getElementById('fireBtn');
 
-        leftBtn.addEventListener('touchstart', (e) => { e.preventDefault(); moveLeft = true; });
-        leftBtn.addEventListener('touchend', () => moveLeft = false);
-        rightBtn.addEventListener('touchstart', (e) => { e.preventDefault(); moveRight = true; });
-        rightBtn.addEventListener('touchend', () => moveRight = false);
-        fireBtn.addEventListener('touchstart', (e) => { e.preventDefault(); isFiring = true; });
-        fireBtn.addEventListener('touchend', () => isFiring = false);
+            leftBtn.addEventListener('touchstart', (e) => { e.preventDefault(); moveLeft = true; });
+            leftBtn.addEventListener('touchend', () => moveLeft = false);
+            rightBtn.addEventListener('touchstart', (e) => { e.preventDefault(); moveRight = true; });
+            rightBtn.addEventListener('touchend', () => moveRight = false);
+            fireBtn.addEventListener('touchstart', (e) => { e.preventDefault(); isFiring = true; });
+            fireBtn.addEventListener('touchend', () => isFiring = false);
 
-        function shoot() {
-            const now = Date.now();
-            if (now - cannon.lastShot > cannon.fireRate) {
-                bullets.push({ x: cannon.x + cannon.width / 2 - 4, y: cannon.y, speed: 10, damage: 1, width: 8, height: 14 });
-                cannon.lastShot = now;
-            }
-        }
-
-        function spawnEnemy() {
-            const now = Date.now();
-            if (now - lastEnemySpawn > 1200) {
-                const size = 40;
-                enemies.push({
-                    x: Math.random() * (canvas.width - size),
-                    y: -size,
-                    width: size, height: size,
-                    speed: 2 + (wave * 0.3),
-                    hp: 1
-                });
-                lastEnemySpawn = now;
-            }
-        }
-
-        function update() {
-            if (gameOver) return;
-
-            if (moveLeft && cannon.x > 0) cannon.x -= cannon.speed;
-            if (moveRight && cannon.x < canvas.width - cannon.width) cannon.x += cannon.speed;
-            if (isFiring) shoot();
-
-            wave = Math.floor(score / 30) + 1;
-            document.getElementById('wave').innerText = wave;
-
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                bullets[i].y -= bullets[i].speed;
-                if (bullets[i].y < 0) bullets.splice(i, 1);
-            }
-
-            spawnEnemy();
-            for (let i = enemies.length - 1; i >= 0; i--) {
-                let e = enemies[i];
-                e.y += e.speed;
-
-                if (e.y + e.height >= cannon.y) {
-                    gameOver = true;
-                    document.getElementById('finalScore').innerText = "مجموع النقاط: " + score;
-                    document.getElementById('gameOverScreen').style.display = 'flex';
-                    return;
-                }
-
-                for (let j = bullets.length - 1; j >= 0; j--) {
-                    let b = bullets[j];
-                    if (b.x < e.x + e.width && b.x + b.width > e.x &&
-                        b.y < e.y + e.height && b.y + b.height > e.y) {
-                        bullets.splice(j, 1);
-                        enemies.splice(i, 1);
-                        score += 10;
-                        document.getElementById('score').innerText = score;
-                        break;
-                    }
+            function shoot() {
+                const now = Date.now();
+                if (now - cannon.lastShot > cannon.fireRate) {
+                    bullets.push({ x: cannon.x + cannon.width / 2 - 4, y: cannon.y, speed: 10, damage: 1, width: 8, height: 14 });
+                    cannon.lastShot = now;
                 }
             }
-        }
 
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            function spawnEnemy() {
+                const now = Date.now();
+                if (now - lastEnemySpawn > 1200) {
+                    const size = 40;
+                    enemies.push({
+                        x: Math.random() * (canvas.width - size),
+                        y: -size,
+                        width: size, height: size,
+                        speed: 2 + (wave * 0.3),
+                        hp: 1
+                    });
+                    lastEnemySpawn = now;
+                }
+            }
 
-            // رسم المدفع
-            ctx.fillStyle = '#2ecc71';
-            ctx.fillRect(cannon.x, cannon.y + 15, cannon.width, cannon.height - 15);
-            ctx.fillStyle = '#f1c40f';
-            ctx.fillRect(cannon.x + cannon.width / 2 - 6, cannon.y, 12, 20);
-
-            // رسم الطلقات
-            ctx.fillStyle = '#e74c3c';
-            bullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height));
-
-            // رسم الأعداء
-            ctx.fillStyle = '#e67e22';
-            enemies.forEach(e => {
-                ctx.fillRect(e.x, e.y, e.width, e.height);
-            });
-        }
-
-        function loop() {
-            update();
-            draw();
-            if (!gameOver) requestAnimationFrame(loop);
-        }
-
-        function restartGame() {
-            score = 0; wave = 1; gameOver = false;
-            bullets = []; enemies = [];
-            cannon.x = canvas.width / 2 - 25;
-            document.getElementById('score').innerText = 0;
-            document.getElementById('wave').innerText = 1;
-            document.getElementById('gameOverScreen').style.display = 'none';
-            loop();
-        }
-
-        loop();
-    </script>
-</body>
-</html>
+3. اضغط على **Commit changes** لحفظ التعديل.
+4. استنى دقيقة واحدة وافتح الرابط واعمل Refresh، وهتلاقي الشاشة نورت والمدفع والأعداء ظهروا فوراً! طمني إيه اللي حصل معاك.
