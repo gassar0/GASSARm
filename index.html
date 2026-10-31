@@ -2,92 +2,150 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>حرب المدفعية</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>معركة الدبابات التكتيكية</title>
     <style>
-        body { margin: 0; background: #0f2027; overflow: hidden; font-family: Tahoma, sans-serif; }
-        #gameCanvas { display: block; width: 100vw; height: 100vh; }
-        #ui { position: absolute; top: 15px; left: 15px; right: 15px; display: flex; justify-content: space-between; color: #fff; font-weight: bold; z-index: 10; pointer-events: none; }
-        .box { background: rgba(0,0,0,0.7); padding: 8px 12px; border-radius: 8px; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+        body {
+            background-color: #12181b;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            touch-action: none;
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #ui-header {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            z-index: 10;
+        }
+        .stat-box {
+            font-weight: bold;
+            font-size: 16px;
+        }
+        #canvas {
+            width: 100%;
+            height: 100%;
+            background: #2a3439;
+        }
+        #controls {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 10;
+        }
+        .btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            active: transform scale(0.95);
+        }
+        .btn-danger { background: #dc2626; }
     </style>
 </head>
 <body>
-    <div id="ui">
-        <div class="box">النقاط: <span id="score">0</span></div>
-        <div class="box">الموجة: <span id="wave">1</span></div>
+
+<div id="game-container">
+    <div id="ui-header">
+        <div class="stat-box" style="color: #4ade80;">الذهب: <span id="gold-val">100</span></div>
+        <div class="stat-box" style="color: #ef4444;">صحة القاعدة: <span id="hp-val">1000</span></div>
     </div>
-    <canvas id="gameCanvas"></canvas>
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+    
+    <canvas id="canvas"></canvas>
 
-        let score = 0, wave = 1;
-        let cannon = { x: canvas.width / 2 - 25, y: canvas.height - 90, width: 50, height: 40, lastShot: 0 };
-        let bullets = [], enemies = [], lastSpawn = 0;
-        let touchX = cannon.x;
+    <div id="controls">
+        <button class="btn" onclick="spawnTank()">إرسال دبابة جاتلينج (50 ذهب)</button>
+    </div>
+</div>
 
-        window.addEventListener('touchmove', e => { touchX = e.touches[0].clientX; });
-        window.addEventListener('mousemove', e => { touchX = e.clientX; });
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
 
-        function loop() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-            // تحريك المدفع بسلاسة مع الإصبع
-            cannon.x += (touchX - (cannon.x + cannon.width / 2)) * 0.2;
-            if (cannon.x < 0) cannon.x = 0;
-            if (cannon.x > canvas.width - cannon.width) cannon.x = canvas.width - cannon.width;
+let gold = 100;
+let baseHP = 1000;
 
-            // إطلاق النار تلقائياً
-            let now = Date.now();
-            if (now - cannon.lastShot > 200) {
-                bullets.push({ x: cannon.x + 21, y: cannon.y, speed: 12 });
-                cannon.lastShot = now;
-            }
+// تحميل صورة الدبابة المخصصة (الصورة الشفافة التي أرسلتها)
+const tankImg = new Image();
+tankImg.src = 'https://i.ibb.co/L8v11fK/tank-sprite.png'; // رابط الصورة الشفافة للدبابة
 
-            // ظهور الأعداء
-            if (now - lastSpawn > 1000) {
-                enemies.push({ x: Math.random() * (canvas.width - 40), y: -40, speed: 2 });
-                lastSpawn = now;
-            }
+// القوات والمقذوفات
+let playerTanks = [];
+let enemyTanks = [];
+let bullets = [];
+let particles = [];
 
-            // رسم المدفع
-            ctx.fillStyle = '#2ecc71';
-            ctx.fillRect(cannon.x, cannon.y + 15, cannon.width, 25);
-            ctx.fillStyle = '#f1c40f';
-            ctx.fillRect(cannon.x + 19, cannon.y, 12, 20);
+class Tank {
+    constructor(x, y, isPlayer = true) {
+        this.x = x;
+        this.y = y;
+        this.size = 60;
+        this.speed = isPlayer ? 1.5 : -1.2;
+        this.isPlayer = isPlayer;
+        this.hp = 100;
+        this.maxHp = 100;
+        this.lastShoot = 0;
+        this.fireRate = 200; // سرعة ضرب الرشاش بالملي ثانية
+    }
 
-            // تحديث ورسم الطلقات
-            ctx.fillStyle = '#e74c3c';
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                bullets[i].y -= bullets[i].speed;
-                ctx.fillRect(bullets[i].x, bullets[i].y, 8, 16);
-                if (bullets[i].y < 0) bullets.splice(i, 1);
-            }
+    update() {
+        this.x += this.speed;
 
-            // تحديث ورسم الأعداء
-            ctx.fillStyle = '#e67e22';
-            for (let i = enemies.length - 1; i >= 0; i--) {
-                enemies[i].y += enemies[i].speed;
-                ctx.fillRect(enemies[i].x, enemies[i].y, 40, 40);
-
-                // التصادم
-                for (let j = bullets.length - 1; j >= 0; j--) {
-                    let b = bullets[j], e = enemies[i];
-                    if (b.x < e.x + 40 && b.x + 8 > e.x && b.y < e.y + 40 && b.y + 16 > e.y) {
-                        bullets.splice(j, 1);
-                        enemies.splice(i, 1);
-                        score += 10;
-                        document.getElementById('score').innerText = score;
-                        break;
-                    }
-                }
-            }
-
-            requestAnimationFrame(loop);
+        // إطلاق النار تلقائياً عند الاشتباك
+        let now = Date.now();
+        if (now - this.lastShoot > this.fireRate) {
+            this.shoot();
+            this.lastShoot = now;
         }
-        loop();
-    </script>
-</body>
-</html>
+    }
+
+    shoot() {
+        // إنشاء طلقة مرئية تخرج من الفوهة
+        bullets.push({
+            x: this.isPlayer ? this.x + 30 : this.x - 30,
+            y: this.y - 15, // من اتجاه الفوهة
+            vx: this.isPlayer ? 8 : -8,
+            vy: (Math.random() - 0.5) * 0.5,
+            isPlayer: this.isPlayer,
+            color: this.isPlayer ? '#fef08a' : '#f87171'
+        });
+    }
+
+    draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        
+        if (!this.isPlayer) {
+            ctx.scale(-1, 1); // تدوير دبابة العدو للاتجاه المعاكس
+        
