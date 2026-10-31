@@ -33,7 +33,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.8);
             padding: 10px 15px;
             border-radius: 8px;
             border: 1px solid #334155;
@@ -46,7 +46,7 @@
         #canvas {
             width: 100%;
             height: 100%;
-            background: #2a3439;
+            background: #1e293b;
         }
         #controls {
             position: absolute;
@@ -61,14 +61,16 @@
             background: #2563eb;
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 14px 28px;
             font-size: 16px;
             font-weight: bold;
             border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            active: transform scale(0.95);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            cursor: pointer;
         }
-        .btn-danger { background: #dc2626; }
+        .btn:active {
+            transform: scale(0.95);
+        }
     </style>
 </head>
 <body>
@@ -90,39 +92,35 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
 
 let gold = 100;
 let baseHP = 1000;
 
-// تحميل صورة الدبابة المخصصة (الصورة الشفافة التي أرسلتها)
-const tankImg = new Image();
-tankImg.src = 'https://i.ibb.co/L8v11fK/tank-sprite.png'; // رابط الصورة الشفافة للدبابة
-
-// القوات والمقذوفات
 let playerTanks = [];
 let enemyTanks = [];
 let bullets = [];
-let particles = [];
 
 class Tank {
     constructor(x, y, isPlayer = true) {
         this.x = x;
         this.y = y;
-        this.size = 60;
         this.speed = isPlayer ? 1.5 : -1.2;
         this.isPlayer = isPlayer;
         this.hp = 100;
         this.maxHp = 100;
         this.lastShoot = 0;
-        this.fireRate = 200; // سرعة ضرب الرشاش بالملي ثانية
+        this.fireRate = 180; // سرعة ضرب الرشاش
     }
 
     update() {
         this.x += this.speed;
 
-        // إطلاق النار تلقائياً عند الاشتباك
         let now = Date.now();
         if (now - this.lastShoot > this.fireRate) {
             this.shoot();
@@ -131,21 +129,160 @@ class Tank {
     }
 
     shoot() {
-        // إنشاء طلقة مرئية تخرج من الفوهة
         bullets.push({
-            x: this.isPlayer ? this.x + 30 : this.x - 30,
-            y: this.y - 15, // من اتجاه الفوهة
-            vx: this.isPlayer ? 8 : -8,
-            vy: (Math.random() - 0.5) * 0.5,
-            isPlayer: this.isPlayer,
-            color: this.isPlayer ? '#fef08a' : '#f87171'
+            x: this.isPlayer ? this.x + 35 : this.x - 35,
+            y: this.y,
+            vx: this.isPlayer ? 10 : -10,
+            vy: (Math.random() - 0.5) * 0.8,
+            isPlayer: this.isPlayer
         });
     }
 
     draw() {
         ctx.save();
         ctx.translate(this.x, this.y);
-        
         if (!this.isPlayer) {
-            ctx.scale(-1, 1); // تدوير دبابة العدو للاتجاه المعاكس
-        
+            ctx.scale(-1, 1);
+        }
+
+        // رسم مجنزر الدبابة الأزرق بدقة ومظهر مجسم (Gatling Blue Tank)
+        // 1. المجنزرات الخارجية
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(-28, -22, 56, 10);
+        ctx.fillRect(-28, 12, 56, 10);
+
+        // 2. جسم الدبابة الرئيسي
+        ctx.fillStyle = this.isPlayer ? '#0284c7' : '#dc2626';
+        ctx.beginPath();
+        ctx.roundRect(-24, -16, 48, 32, 6);
+        ctx.fill();
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // 3. دروع وجوانب الدبابة
+        ctx.fillStyle = this.isPlayer ? '#0369a1' : '#991b1b';
+        ctx.fillRect(-20, -14, 12, 28);
+        ctx.fillRect(8, -14, 12, 28);
+
+        // 4. برج الرشاش الجاتلينج (Gatling Turret)
+        ctx.fillStyle = '#334155';
+        ctx.beginPath();
+        ctx.arc(0, 0, 12, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 5. سبطانة الرشاش متعدد الفوهات
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(8, -4, 24, 8);
+        ctx.fillStyle = '#475569';
+        ctx.fillRect(14, -5, 4, 10);
+        ctx.fillRect(22, -5, 4, 10);
+
+        // 6. وميض النار عند الإطلاق
+        if (Date.now() - this.lastShoot < 60) {
+            ctx.fillStyle = '#fbbf24';
+            ctx.beginPath();
+            ctx.arc(34, 0, 8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.restore();
+
+        // شريط الصحة فوق الدبابة
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(this.x - 25, this.y - 32, 50, 6);
+        ctx.fillStyle = this.isPlayer ? '#4ade80' : '#ef4444';
+        ctx.fillRect(this.x - 25, this.y - 32, (this.hp / this.maxHp) * 50, 6);
+    }
+}
+
+function spawnTank() {
+    if (gold >= 50) {
+        gold -= 50;
+        document.getElementById('gold-val').innerText = gold;
+        playerTanks.push(new Tank(60, canvas.height / 2 + (Math.random() * 120 - 60), true));
+    }
+}
+
+// توليد الأعداء
+setInterval(() => {
+    enemyTanks.push(new Tank(canvas.width - 60, canvas.height / 2 + (Math.random() * 120 - 60), false));
+}, 4000);
+
+// زيادة الذهب
+setInterval(() => {
+    gold += 10;
+    document.getElementById('gold-val').innerText = gold;
+}, 1000);
+
+function gameLoop() {
+    // رسم أرضية المعركة والخطوط
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // خطوط الميدان العسكري
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1;
+    for(let i=0; i<canvas.height; i+=40) {
+        ctx.beginPath();
+        ctx.moveTo(0, i);
+        ctx.lineTo(canvas.width, i);
+        ctx.stroke();
+    }
+
+    // تحديث ورسم الطلقات المرئية
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        let b = bullets[i];
+        b.x += b.vx;
+        b.y += b.vy;
+
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = b.isPlayer ? '#fef08a' : '#f87171';
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = b.isPlayer ? '#fef08a' : '#f87171';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // تصادم الطلقات مع أعداء
+        if (b.isPlayer) {
+            enemyTanks.forEach((enemy, eIdx) => {
+                if (Math.hypot(b.x - enemy.x, b.y - enemy.y) < 25) {
+                    enemy.hp -= 10;
+                    bullets.splice(i, 1);
+                    if (enemy.hp <= 0) enemyTanks.splice(eIdx, 1);
+                }
+            });
+        } else {
+            playerTanks.forEach((player, pIdx) => {
+                if (Math.hypot(b.x - player.x, b.y - player.y) < 25) {
+                    player.hp -= 10;
+                    bullets.splice(i, 1);
+                    if (player.hp <= 0) playerTanks.splice(pIdx, 1);
+                }
+            });
+        }
+
+        if (b.x < 0 || b.x > canvas.width) {
+            bullets.splice(i, 1);
+        }
+    }
+
+    // رسم الدبابات
+    playerTanks.forEach(tank => {
+        tank.update();
+        tank.draw();
+    });
+
+    enemyTanks.forEach(tank => {
+        tank.update();
+        tank.draw();
+    });
+
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+</body>
+</html>
